@@ -46,16 +46,34 @@ sql.connect(dbConfig).then((pool) => {
     });
 
 
-    // Obtener todas las facturas
-    index.get('/facturas', async (req, res) => {
+    // Obtener todas las facturas o una sola factura si se proporciona un id
+    index.get('/facturas/:id?', async (req, res) => {
+        const { id } = req.params; // Captura el parámetro id si está presente
+
         try {
-            const result = await pool.request().query('SELECT * FROM Facturas_Kv');
+            let result;
+            if (id) {
+                // Consulta para una sola factura cuando se proporciona un id
+                result = await pool.request()
+                    .input('IdFactura', sql.Int, id)
+                    .query('SELECT * FROM Facturas_Kv WHERE IdFactura = @IdFactura');
+
+                if (result.recordset.length === 0) {
+                    return res.status(404).send('Factura no encontrada');
+                }
+            } else {
+                // Consulta para todas las facturas
+                result = await pool.request()
+                    .query('SELECT * FROM Facturas_Kv');
+            }
+
             res.json(result.recordset);
         } catch (err) {
             console.error('Error al obtener las facturas:', err);
             res.status(500).send('Error al obtener las facturas');
         }
     });
+
 
     // Actualizar una factura
     index.put('/facturas/:id', async (req, res) => {
