@@ -80,13 +80,19 @@ sql.connect(dbConfig).then((pool) => {
     index.delete('/facturas/:id', async (req, res) => {
         const { id } = req.params;
         try {
-            await pool.request()
+            const result = await pool.request()
                 .input('IdFactura', sql.Int, id)
                 .query('DELETE FROM Facturas_Kv WHERE IdFactura = @IdFactura');
-            res.sendStatus(204).json({ message: 'Factura eliminada correctamente' });
+
+            // Verificar si se eliminó alguna fila
+            if (result.rowsAffected[0] > 0) {
+                res.status(200).json({ message: 'Factura eliminada correctamente' });
+            } else {
+                res.status(404).json({ message: 'Factura no encontrada o ya eliminada' });
+            }
         } catch (err) {
             console.error('Error al eliminar la factura:', err);
-            res.status(500).send('Error al eliminar la factura');
+            res.status(500).json({ message: 'Error al eliminar la factura' });
         }
     });
 
