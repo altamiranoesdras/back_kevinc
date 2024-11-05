@@ -234,7 +234,7 @@ sql.connect(dbConfig).then((pool) => {
 
 
     // Configura el servidor para escuchar en un puerto específico
-    const PORT = 3001;
+    const PORT = process.env.PORT || 3001;
     index.listen(PORT, () => {
         console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
