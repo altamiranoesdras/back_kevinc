@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -7,12 +8,12 @@ const index = express();
 index.use(cors());
 index.use(bodyParser.json());
 
-// Configuración de la conexión a SQL Server
+// Configuración de la conexión a SQL Server usando variables de entorno
 const dbConfig = {
-    user: 'usr_DesaWeb',
-    password: 'GuasTa360#',
-    server: 'svr-sql-ctezo.southcentralus.cloudapp.azure.com',
-    database: 'db_banco',
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
     options: {
         encrypt: true,
         trustServerCertificate: true
@@ -142,16 +143,34 @@ sql.connect(dbConfig).then((pool) => {
         }
     });
 
-    // Obtener todos los servicios facturados
-    index.get('/servicios', async (req, res) => {
+    // Obtener todos los servicios facturados o los servicios de una factura específica si se proporciona un idFactura
+    index.get('/servicios/:idFactura?', async (req, res) => {
+        const { idFactura } = req.params; // Captura el parámetro idFactura si está presente
+
         try {
-            const result = await pool.request().query('SELECT * FROM ServiciosFacturados_Kv');
+            let result;
+            if (idFactura) {
+                // Consulta para los servicios de una factura específica
+                result = await pool.request()
+                    .input('IdFactura', sql.Int, idFactura)
+                    .query('SELECT * FROM ServiciosFacturados_Kv WHERE IdFactura = @IdFactura');
+
+                if (result.recordset.length === 0) {
+                    return res.status(404).send('No se encontraron servicios para la factura especificada');
+                }
+            } else {
+                // Consulta para todos los servicios facturados
+                result = await pool.request()
+                    .query('SELECT * FROM ServiciosFacturados_Kv');
+            }
+
             res.json(result.recordset);
         } catch (err) {
             console.error('Error al obtener los servicios facturados:', err);
             res.status(500).send('Error al obtener los servicios facturados');
         }
     });
+
 
     // Actualizar un servicio facturado
     index.put('/servicios/:id', async (req, res) => {
@@ -245,6 +264,10 @@ sql.connect(dbConfig).then((pool) => {
     // Eliminar un tipo de servicio
     index.delete('/tipos-servicios/:id', async (req, res) => {
         const { id } = req.params;
+
+        console.log('id:', id);
+        return;
+
         try {
             await pool.request()
                 .input('id', sql.Int, id)
